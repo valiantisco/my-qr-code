@@ -5,7 +5,7 @@ import { Badge, buttonClassName, Card, CardBody, Stat } from "@/components/ui";
 import { QrPreview } from "@/components/qr-preview";
 import { formatDate, formatRelative } from "@/lib/format";
 import { publicEnv } from "@/lib/env";
-import type { QrCode, QrScan } from "@/types/db";
+import type { QrCode, QrFolder, QrScan } from "@/types/db";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,11 @@ export default async function QrDetailPage({
   if (qrError || !qr) notFound();
   const code = qr as QrCode;
 
-  const [{ data: scans, error: scansError }, { count: totalScans }] = await Promise.all([
+  const [
+    { data: scans, error: scansError },
+    { count: totalScans },
+    { data: folder, error: folderError },
+  ] = await Promise.all([
     supabase
       .from("qr_scans")
       .select("*")
@@ -37,11 +41,20 @@ export default async function QrDetailPage({
       .from("qr_scans")
       .select("id", { count: "exact", head: true })
       .eq("qr_code_id", code.id),
+    code.folder_id
+      ? supabase
+          .from("qr_folders")
+          .select("*")
+          .eq("id", code.folder_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   if (scansError) throw new Error(`Could not load scans: ${scansError.message}`);
+  if (folderError) throw new Error(`Could not load folder: ${folderError.message}`);
 
   const recent = (scans as QrScan[] | null) ?? [];
+  const qrFolder = folder as QrFolder | null;
   const redirectUrl = `${publicEnv.siteUrl}/r/${code.slug}`;
 
   return (
@@ -108,6 +121,7 @@ export default async function QrDetailPage({
               <DetailRow label="Slug">
                 <code>{code.slug}</code>
               </DetailRow>
+              <DetailRow label="Folder">{qrFolder?.name ?? "Uncategorized"}</DetailRow>
               <DetailRow label="Created">{formatDate(code.created_at)}</DetailRow>
               {code.notes ? (
                 <DetailRow label="Notes">

@@ -33,6 +33,7 @@ export const qrCreateSchema = z.object({
     .or(z.literal("").transform(() => undefined)),
   campaign: z.string().trim().max(120).optional().or(z.literal("").transform(() => undefined)),
   notes: z.string().trim().max(2000).optional().or(z.literal("").transform(() => undefined)),
+  folder_name: z.string().trim().max(80, "Folder name must be 80 characters or less").optional(),
   is_active: z.boolean().optional(),
 });
 

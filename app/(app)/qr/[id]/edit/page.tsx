@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardBody } from "@/components/ui";
 import { QrForm } from "@/components/qr-form";
-import type { QrCode } from "@/types/db";
+import type { QrCode, QrFolder } from "@/types/db";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +14,22 @@ export default async function EditQrPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("qr_codes")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  const [{ data, error }, foldersRes] = await Promise.all([
+    supabase
+      .from("qr_codes")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("qr_folders")
+      .select("*")
+      .order("name", { ascending: true }),
+  ]);
+
+  if (error) throw new Error(`Could not load QR code: ${error.message}`);
+  if (foldersRes.error) throw new Error(`Could not load folders: ${foldersRes.error.message}`);
   if (!data) notFound();
+  const folders = (foldersRes.data as QrFolder[] | null) ?? [];
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -31,7 +41,7 @@ export default async function EditQrPage({
       </div>
       <Card>
         <CardBody>
-          <QrForm mode={{ kind: "edit", qr: data as QrCode }} />
+          <QrForm mode={{ kind: "edit", qr: data as QrCode }} folders={folders} />
         </CardBody>
       </Card>
     </div>

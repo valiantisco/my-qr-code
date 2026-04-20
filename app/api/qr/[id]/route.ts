@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { publicEnv } from "@/lib/env";
+import { resolveFolderId } from "@/lib/folders";
 import { firstValidationMessage, qrUpdateSchema } from "@/lib/schemas";
 import { isRedirectLoopTarget } from "@/lib/url";
 
@@ -40,6 +41,20 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (input.is_active !== undefined) update.is_active = input.is_active;
   if (input.slug !== undefined && input.slug) {
     update.slug = input.slug;
+  }
+  if (input.folder_name !== undefined) {
+    try {
+      update.folder_id = await resolveFolderId({
+        supabase,
+        ownerId: user.id,
+        folderName: input.folder_name,
+      });
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Could not resolve folder" },
+        { status: 400 },
+      );
+    }
   }
 
   if (Object.keys(update).length === 0) {

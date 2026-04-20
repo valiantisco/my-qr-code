@@ -1,6 +1,6 @@
 # QR Tracker
 
-Private internal QR tracking app. Create QR codes, serve redirects through `/r/[slug]`, log every scan, view stats on a dashboard, and receive weekly/monthly email reports.
+Private internal QR tracking app. Create QR codes, organize them in folders, serve redirects through `/r/[slug]`, log every scan, view stats on a dashboard, bulk-download QR PNGs, and receive weekly/monthly email reports.
 
 - Next.js App Router + TypeScript + Tailwind
 - Supabase (Postgres + Auth) with RLS
@@ -35,9 +35,9 @@ CRON_SECRET=some-long-random-string
 ## 3. Supabase setup
 
 1. Create a new Supabase project.
-2. Open **SQL Editor** and run the contents of [`supabase/schema.sql`](./supabase/schema.sql). It creates `qr_codes`, `qr_scans`, `report_preferences`, indexes, and RLS policies.
-3. In **Authentication → Users**, click **Add user** and create the single admin user with email + password. (Email confirmation can be skipped in dev.)
-4. (Optional) In **Authentication → Providers → Email**, disable signups so no one else can register.
+2. Open **SQL Editor** and run the contents of [`supabase/schema.sql`](./supabase/schema.sql). It creates `qr_folders`, `qr_codes`, `qr_scans`, `report_preferences`, indexes, and RLS policies.
+3. In **Authentication -> Users**, click **Add user** and create the single admin user with email + password. (Email confirmation can be skipped in dev.)
+4. (Optional) In **Authentication -> Providers -> Email**, disable signups so no one else can register.
 
 ## 4. Run locally
 
@@ -45,7 +45,7 @@ CRON_SECRET=some-long-random-string
 npm run dev
 ```
 
-Open http://localhost:3000 — you'll be redirected to `/login`. Sign in with the admin credentials you created in Supabase.
+Open http://localhost:3000 - you'll be redirected to `/login`. Sign in with the admin credentials you created in Supabase.
 
 ## 5. Typecheck / build
 
@@ -57,15 +57,15 @@ npm run build
 ## 6. Deploy to Vercel
 
 1. Push this folder to a git repo and import it into Vercel.
-2. Set **Project → Settings → Environment Variables** using the same keys as `.env.local`. Set `NEXT_PUBLIC_SITE_URL` to your deployed URL (e.g. `https://qr.example.com`).
+2. Set **Project -> Settings -> Environment Variables** using the same keys as `.env.local`. Set `NEXT_PUBLIC_SITE_URL` to your deployed URL (e.g. `https://qr.example.com`).
 3. In Resend, verify the sender domain for `REPORT_FROM_EMAIL`.
 4. Deploy.
 
 `vercel.json` already registers two cron jobs:
 
 ```
-/api/reports/weekly   — every Monday 14:00 UTC
-/api/reports/monthly  — 1st of each month 14:00 UTC
+/api/reports/weekly   - every Monday 14:00 UTC
+/api/reports/monthly  - 1st of each month 14:00 UTC
 ```
 
 Report endpoints accept:
@@ -76,9 +76,9 @@ Adjust the schedules in `vercel.json` as desired.
 
 ## 7. Using the app
 
-- **Dashboard** (`/dashboard`): totals + table of all QR codes + manual report triggers.
-- **New QR** (`/qr/new`): name, destination URL, optional slug/campaign/notes, active toggle.
-- **QR detail** (`/qr/[id]`): preview + PNG download, redirect URL, total/last scan, recent 50 scans. Edit + delete.
+- **Dashboard** (`/dashboard`): totals, folder filters, selectable QR table, bulk PNG downloads, and manual report triggers.
+- **New QR** (`/qr/new`): name, destination URL, optional folder/slug/campaign/notes, active toggle.
+- **QR detail** (`/qr/[id]`): preview + PNG download, folder, redirect URL, total/last scan, recent 50 scans. Edit + delete.
 - **Redirect** (`/r/[slug]`): logs a scan row, then 302s to the destination. Returns a clean error page if disabled or missing.
 
 ---
@@ -91,10 +91,10 @@ app/
   page.tsx                       redirects to /dashboard or /login
   globals.css                    Tailwind base + small overrides
   login/page.tsx                 client-side Supabase sign-in
-  auth/signout/route.ts          POST → Supabase signOut
+  auth/signout/route.ts          POST -> Supabase signOut
   (app)/                         protected shell (TopNav + auth check)
     layout.tsx
-    dashboard/page.tsx           stats, QR table, manual report buttons
+    dashboard/page.tsx           stats + dashboard data fetching
     qr/new/page.tsx              create QR
     qr/[id]/page.tsx             detail (preview, stats, recent scans)
     qr/[id]/edit/page.tsx        edit QR
@@ -107,11 +107,13 @@ app/
 components/
   ui.tsx                         Button, Input, Card, Stat, Badge, Field
   nav.tsx                        top nav + sign-out
+  qr-table.tsx                   folder filter + select/download table
   qr-form.tsx                    shared create/edit form (client)
   qr-preview.tsx                 renders and downloads QR PNG (client)
   report-triggers.tsx            dashboard "send report now" buttons (client)
 lib/
   env.ts                         typed env accessor
+  folders.ts                     folder normalization + find-or-create helper
   schemas.ts                     zod schemas + URL normalization
   slug.ts                        slugify + random slug
   user-agent.ts                  ua-parser wrapper
@@ -166,7 +168,7 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" \
   http://localhost:3000/api/reports/weekly
 ```
 
-Or hit the dashboard → **Send weekly** / **Send monthly** buttons while signed in.
+Or hit the dashboard **Send weekly** / **Send monthly** buttons while signed in.
 
 ---
 

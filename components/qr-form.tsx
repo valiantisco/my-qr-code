@@ -3,17 +3,25 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Field, Input, Textarea } from "@/components/ui";
-import type { QrCode } from "@/types/db";
+import type { QrCode, QrFolder } from "@/types/db";
 
 type Mode = { kind: "create" } | { kind: "edit"; qr: QrCode };
 
-export function QrForm({ mode }: { mode: Mode }) {
+export function QrForm({
+  mode,
+  folders,
+}: {
+  mode: Mode;
+  folders: QrFolder[];
+}) {
   const router = useRouter();
   const initial = mode.kind === "edit" ? mode.qr : null;
+  const initialFolder = folders.find((folder) => folder.id === initial?.folder_id);
 
   const [name, setName] = useState(initial?.name ?? "");
   const [destination, setDestination] = useState(initial?.destination_url ?? "");
   const [slug, setSlug] = useState(initial?.slug ?? "");
+  const [folderName, setFolderName] = useState(initialFolder?.name ?? "");
   const [campaign, setCampaign] = useState(initial?.campaign ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
@@ -29,6 +37,7 @@ export function QrForm({ mode }: { mode: Mode }) {
       name,
       destination_url: destination,
       slug: slug || undefined,
+      folder_name: folderName,
       campaign: campaign || undefined,
       notes: notes || undefined,
       is_active: isActive,
@@ -116,6 +125,25 @@ export function QrForm({ mode }: { mode: Mode }) {
           placeholder="fall-24"
           onChange={(e) => setSlug(e.target.value)}
         />
+      </Field>
+
+      <Field
+        label="Folder"
+        htmlFor="qr-folder"
+        hint="Type a new folder name or reuse an existing one. Leave blank for uncategorized."
+      >
+        <Input
+          id="qr-folder"
+          list="qr-folder-options"
+          value={folderName}
+          placeholder="Retail displays"
+          onChange={(e) => setFolderName(e.target.value)}
+        />
+        <datalist id="qr-folder-options">
+          {folders.map((folder) => (
+            <option key={folder.id} value={folder.name} />
+          ))}
+        </datalist>
       </Field>
 
       <div className="grid gap-5 md:grid-cols-2">
