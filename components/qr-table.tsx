@@ -2,8 +2,13 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import QRCode from "qrcode";
 import { Badge, Button, buttonClassName, Card } from "@/components/ui";
+import {
+  defaultQrDownloadOptions,
+  downloadQrCode,
+  fileSafe,
+  type QrDownloadFormat,
+} from "@/components/qr-download";
 import { formatRelative } from "@/lib/format";
 import type { QrFolder } from "@/types/db";
 
@@ -21,14 +26,6 @@ export type DashboardQr = {
   redirect_url: string;
 };
 
-function fileSafe(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80) || "qr-code";
-}
-
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -42,6 +39,11 @@ export function QrTable({
 }) {
   const [folderFilter, setFolderFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [format, setFormat] = useState<QrDownloadFormat>(
+    defaultQrDownloadOptions.format,
+  );
+  const [darkColor, setDarkColor] = useState(defaultQrDownloadOptions.darkColor);
+  const [lightColor, setLightColor] = useState(defaultQrDownloadOptions.lightColor);
   const [downloading, setDownloading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -81,22 +83,18 @@ export function QrTable({
 
     try {
       for (const code of selectedCodes) {
-        const dataUrl = await QRCode.toDataURL(code.redirect_url, {
-          margin: 1,
-          width: 1024,
-          errorCorrectionLevel: "M",
-          color: { dark: "#0a0a0a", light: "#ffffff" },
+        await downloadQrCode({
+          url: code.redirect_url,
+          filename: `${fileSafe(code.folder_name ?? "uncategorized")}-${fileSafe(code.slug)}`,
+          options: { format, darkColor, lightColor },
         });
-
-        const anchor = document.createElement("a");
-        anchor.href = dataUrl;
-        anchor.download = `${fileSafe(code.folder_name ?? "uncategorized")}-${fileSafe(code.slug)}.png`;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
         await wait(150);
       }
-      setMessage(`Downloaded ${selectedCodes.length} QR code${selectedCodes.length === 1 ? "" : "s"}.`);
+      setMessage(
+        `Downloaded ${selectedCodes.length} ${format.toUpperCase()} QR code${
+          selectedCodes.length === 1 ? "" : "s"
+        }.`,
+      );
     } catch {
       setMessage("Could not generate one of the selected QR downloads.");
     } finally {
@@ -111,10 +109,39 @@ export function QrTable({
           <div>
             <h2 className="text-sm font-semibold">All QR codes</h2>
             <p className="text-xs text-neutral-500">
-              Select one or more rows to download QR PNGs together.
+              Select one or more rows to download QR files together.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="space-y-1 text-xs text-neutral-600">
+              <span>Format</span>
+              <select
+                value={format}
+                onChange={(e) => setFormat(e.target.value as QrDownloadFormat)}
+                className="h-8 rounded-md border border-neutral-200 bg-white px-2 text-sm text-neutral-900"
+              >
+                <option value="png">PNG</option>
+                <option value="svg">SVG</option>
+              </select>
+            </label>
+            <label className="space-y-1 text-xs text-neutral-600">
+              <span>QR</span>
+              <input
+                type="color"
+                value={darkColor}
+                onChange={(e) => setDarkColor(e.target.value)}
+                className="h-8 w-12 cursor-pointer rounded-md border border-neutral-200 bg-white p-1"
+              />
+            </label>
+            <label className="space-y-1 text-xs text-neutral-600">
+              <span>Base</span>
+              <input
+                type="color"
+                value={lightColor}
+                onChange={(e) => setLightColor(e.target.value)}
+                className="h-8 w-12 cursor-pointer rounded-md border border-neutral-200 bg-white p-1"
+              />
+            </label>
             <span className="text-xs text-neutral-500">
               {selectedIds.length} selected
             </span>

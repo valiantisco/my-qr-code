@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import QRCode from "qrcode";
+import { Button } from "@/components/ui";
+import {
+  createQrPreviewDataUrl,
+  defaultQrDownloadOptions,
+  downloadQrCode,
+  type QrDownloadFormat,
+} from "@/components/qr-download";
 
 export function QrPreview({
   url,
@@ -13,16 +19,18 @@ export function QrPreview({
   className?: string;
 }) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
+  const [format, setFormat] = useState<QrDownloadFormat>(
+    defaultQrDownloadOptions.format,
+  );
+  const [darkColor, setDarkColor] = useState(defaultQrDownloadOptions.darkColor);
+  const [lightColor, setLightColor] = useState(defaultQrDownloadOptions.lightColor);
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setDataUrl(null);
-    QRCode.toDataURL(url, {
-      margin: 1,
-      width: size,
-      errorCorrectionLevel: "M",
-      color: { dark: "#0a0a0a", light: "#ffffff" },
-    })
+    createQrPreviewDataUrl({ url, size, darkColor, lightColor })
       .then((v) => {
         if (!cancelled) setDataUrl(v);
       })
@@ -32,7 +40,23 @@ export function QrPreview({
     return () => {
       cancelled = true;
     };
-  }, [url, size]);
+  }, [url, size, darkColor, lightColor]);
+
+  async function onDownload() {
+    setDownloading(true);
+    setError(null);
+    try {
+      await downloadQrCode({
+        url,
+        filename: "qr",
+        options: { format, darkColor, lightColor },
+      });
+    } catch {
+      setError("Could not generate download.");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   return (
     <div className={className}>
@@ -50,15 +74,52 @@ export function QrPreview({
           style={{ width: size, height: size }}
         />
       )}
-      {dataUrl ? (
-        <a
-          href={dataUrl}
-          download="qr.png"
-          className="mt-2 inline-block text-xs text-neutral-600 underline hover:text-neutral-900"
+      <div className="mt-3 w-full space-y-3">
+        <div className="grid grid-cols-2 gap-2 text-left">
+          <label className="space-y-1 text-xs text-neutral-600">
+            <span>Format</span>
+            <select
+              value={format}
+              onChange={(e) => setFormat(e.target.value as QrDownloadFormat)}
+              className="h-9 w-full rounded-md border border-neutral-200 bg-white px-2 text-sm text-neutral-900"
+            >
+              <option value="png">PNG</option>
+              <option value="svg">SVG</option>
+            </select>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="space-y-1 text-xs text-neutral-600">
+              <span>QR</span>
+              <input
+                type="color"
+                value={darkColor}
+                onChange={(e) => setDarkColor(e.target.value)}
+                className="h-9 w-full cursor-pointer rounded-md border border-neutral-200 bg-white p-1"
+              />
+            </label>
+            <label className="space-y-1 text-xs text-neutral-600">
+              <span>Base</span>
+              <input
+                type="color"
+                value={lightColor}
+                onChange={(e) => setLightColor(e.target.value)}
+                className="h-9 w-full cursor-pointer rounded-md border border-neutral-200 bg-white p-1"
+              />
+            </label>
+          </div>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={!dataUrl || downloading}
+          onClick={onDownload}
+          className="w-full"
         >
-          Download PNG
-        </a>
-      ) : null}
+          {downloading ? "Preparing..." : `Download ${format.toUpperCase()}`}
+        </Button>
+        {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      </div>
     </div>
   );
 }

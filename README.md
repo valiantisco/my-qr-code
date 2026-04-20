@@ -1,6 +1,6 @@
 # QR Tracker
 
-Private internal QR tracking app. Create QR codes, organize them in folders, serve redirects through `/r/[slug]`, log every scan, view stats on a dashboard, bulk-download QR PNGs, and receive weekly/monthly email reports.
+Private internal QR tracking app. Create QR codes, organize them in folders, serve redirects through `/r/[slug]`, log every scan, view stats on a dashboard, bulk-download QR PNG/SVG files, and receive weekly/monthly email reports.
 
 - Next.js App Router + TypeScript + Tailwind
 - Supabase (Postgres + Auth) with RLS
@@ -76,9 +76,9 @@ Adjust the schedules in `vercel.json` as desired.
 
 ## 7. Using the app
 
-- **Dashboard** (`/dashboard`): totals, folder filters, selectable QR table, bulk PNG downloads, and manual report triggers.
+- **Dashboard** (`/dashboard`): totals, folder filters, selectable QR table, bulk PNG/SVG downloads with color controls, and manual report triggers.
 - **New QR** (`/qr/new`): name, destination URL, optional folder/slug/campaign/notes, active toggle.
-- **QR detail** (`/qr/[id]`): preview + PNG download, folder, redirect URL, total/last scan, recent 50 scans. Edit + delete.
+- **QR detail** (`/qr/[id]`): preview + PNG/SVG download with color controls, folder, redirect URL, total/last scan, recent 50 scans. Edit + delete.
 - **Redirect** (`/r/[slug]`): logs a scan row, then 302s to the destination. Returns a clean error page if disabled or missing.
 
 ---
@@ -108,6 +108,7 @@ components/
   ui.tsx                         Button, Input, Card, Stat, Badge, Field
   nav.tsx                        top nav + sign-out
   qr-table.tsx                   folder filter + select/download table
+  qr-download.ts                 PNG/SVG generation + download helpers
   qr-form.tsx                    shared create/edit form (client)
   qr-preview.tsx                 renders and downloads QR PNG (client)
   report-triggers.tsx            dashboard "send report now" buttons (client)
